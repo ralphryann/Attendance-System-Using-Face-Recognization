@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance Session{% endblock %}
+
+{% block content %}
+  <div class="max-w-6xl mx-auto">
+    <div class="bg-white rounded-3xl shadow-2xl overflow-hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr]">
+        <div class="bg-gray-950 p-4 md:p-6">
+          <div class="aspect-video rounded-2xl overflow-hidden border border-white/10 bg-black flex items-center justify-center">
+            <video id="camera-feed" autoplay playsinline muted class="w-full h-full object-cover"></video>
+          </div>
+          <canvas id="capture-canvas" class="hidden"></canvas>
+        </div>
+
+        <div class="p-6 md:p-8 flex flex-col gap-6">
+          <div>
+            <p class="text-sm uppercase tracking-[0.25em] text-orange-500 font-semibold">Live Session</p>
+            <h1 class="text-3xl font-bold text-gray-800 mt-2">Attendance Session</h1>
+            <p class="text-gray-500 mt-2">{{ batch_name }} / {{ subject_name }}</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-orange-50 border border-orange-100 rounded-2xl p-4">
+              <p class="text-sm text-gray-500">Batch</p>
+              <p class="text-xl font-semibold text-gray-800 mt-1">{{ batch_name }}</p>
+            </div>
+            <div class="bg-green-50 border border-green-100 rounded-2xl p-4">
+              <p class="text-sm text-gray-500">Subject</p>
+              <p class="text-xl font-semibold text-gray-800 mt-1">{{ subject_name }}</p>
+            </div>
+          </div>
+
+          <div class="bg-blue-50 border border-blue-100 rounded-2xl p-5">
+            <p class="text-sm uppercase tracking-wide text-blue-600 font-semibold">Status</p>
+            <p id="status-message" class="text-lg font-semibold text-gray-800 mt-2">Requesting camera access...</p>
+            <p id="recognized-student" class="text-sm text-gray-500 mt-2">No student recognized yet.</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-gray-50 border border-gray-200 rounded-2xl p-4">
+              <p class="text-sm text-gray-500">Total Students</p>
+              <p class="text-2xl font-bold text-gray-800 mt-1">{{ total_students }}</p>
+            </div>
+            <div class="bg-gray-50 border border-gray-200 rounded-2xl p-4">
+              <p class="text-sm text-gray-500">Remaining</p>
+              <p id="remaining-students" class="text-2xl font-bold text-gray-800 mt-1">{{ total_students }}</p>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <button id="finish-button" type="button" class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl shadow-md transition duration-300">
+              <i class="fa-solid fa-floppy-disk mr-2"></i> Finish and Save Attendance
+            </button>
+            <a href="{{ url_for('take_attendance') }}" class="block w-full text-center bg-gray-700 hover:bg-gray-800 text-white font-semibold py-3 rounded-xl shadow-md transition duration-300">
+              <i class="fa-solid fa-arrow-left mr-2"></i> Back
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    const attendanceToken = "{{ attendance_token }}";
+    const frameIntervalMs = {{ frame_interval_ms }};
+    const videoElement = document.getElementById("camera-feed");
+    const canvasElement = document.getElementById("capture-canvas");
+    const statusMessageElement = document.getElementById("status-message");
+    const recognizedStudentElement = document.getElementById("recognized-student");
+    const remainingStudentsElement = document.getElementById("remaining-students");
+    const finishButton = document.getElementById("finish-button");
+
+    let mediaStream = null;
+    let captureTimer = null;
+    let isProcessingFrame = false;
+    let isFinishing = false;
+
+    function setStatus(message, recognizedStudent = null) {
+      statusMessageElement.textContent = message;
+      recognizedStudentElement.textContent = recognizedStudent
+        ? `Recognized student: ${recognizedStudent}`
+        : "No student recognized yet.";
+    }
+
+    async function startCamera() {
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" },
+          audio: false,
+        });
+        videoElement.srcObject = mediaStream;
+        setStatus("Camera ready. Looking for face...");
+        startFrameLoop();
+      } catch (error) {
+        setStatus("Camera access was denied or is unavailable.");
+      }
+    }
+
+    function stopCamera() {
+      if (captureTimer) {
+        clearInterval(captureTimer);
+        captureTimer = null;
+      }
+
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((track) => track.stop());
+        mediaStream = null;
+      }
+    }
+
+    function startFrameLoop() {
+      captureTimer = window.setInterval(async () => {
+        if (isProcessingFrame || isFinishing) {
+          return;
+        }
+
+        if (!videoElement.videoWidth || !videoElement.videoHeight) {
+          return;
+        }
+
+        isProcessingFrame = true;
+        try {
+          canvasElement.width = videoElement.videoWidth;
+          canvasElement.height = videoElement.videoHeight;
+          const context = canvasElement.getContext("2d");
+          context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+
+          const imageData = canvasElement.toDataURL("image/jpeg", 0.8);
+          const response = await fetch("/api/process_frame", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              attendance_token: attendanceToken,
+              image_data: imageData,
+            }),
+          });
+
+          const payload = await response.json();
+          if (!response.ok || payload.status !== "success") {
+            setStatus(payload.message || "Failed to process frame.");
+            return;
+          }
+
+          setStatus(payload.message, payload.recognized_student);
+          if (typeof payload.remaining_students === "number") {
+            remainingStudentsElement.textContent = String(payload.remaining_students);
+          }
+        } catch (error) {
+          setStatus("Frame processing failed. Please try again.");
+        } finally {
+          isProcessingFrame = false;
+        }
+      }, frameIntervalMs);
+    }
+
+    async function finalizeAttendance() {
+      if (isFinishing) {
+        return;
+      }
+
+      isFinishing = true;
+      finishButton.disabled = true;
+      finishButton.classList.add("opacity-70", "cursor-not-allowed");
+      setStatus("Saving attendance records...");
+
+      try {
+        const response = await fetch("/api/finalize_attendance", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            attendance_token: attendanceToken,
+          }),
+        });
+
+        const payload = await response.json();
+        if (!response.ok || payload.status !== "success") {
+          throw new Error(payload.message || "Failed to save attendance.");
+        }
+
+        stopCamera();
+        window.location.href = payload.report_url;
+      } catch (error) {
+        setStatus(error.message || "Failed to save attendance.");
+        finishButton.disabled = false;
+        finishButton.classList.remove("opacity-70", "cursor-not-allowed");
+        isFinishing = false;
+      }
+    }
+
+    finishButton.addEventListener("click", finalizeAttendance);
+    window.addEventListener("beforeunload", stopCamera);
+    startCamera();
+  </script>
+{% endblock %}

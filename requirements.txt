@@ -1,0 +1,7 @@
+Flask
+Flask-Login
+Flask-SQLAlchemy
+matplotlib
+numpy
+opencv-python
+face_recognition
