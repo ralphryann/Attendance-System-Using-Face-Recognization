@@ -15,16 +15,22 @@
     <!-- Right Form -->
     <div class="col-form">
       <h1 class="card-title"><i class="fa-solid fa-chart-column"></i> Attendance Analytics</h1>
+      <p class="card-subtitle">Generate charts by batch, month, and subject scope.</p>
 
       <form method="POST" action="/view_analytics">
         <div class="form-group">
-          <label class="form-label"><i class="fa-solid fa-folder"></i> Batch Name</label>
-          <input type="text" name="batch" required class="form-control" placeholder="e.g. BatchA" />
+          <label class="form-label" for="batch"><i class="fa-solid fa-folder"></i> Batch Name</label>
+          <select id="batch" name="batch" required class="form-control">
+            <option value="">-- Select Batch --</option>
+            {% for batch in batches %}
+            <option value="{{ batch }}">{{ batch }}</option>
+            {% endfor %}
+          </select>
         </div>
 
         <div class="form-group">
-          <label class="form-label"><i class="fa-solid fa-calendar-days"></i> Month (1–12)</label>
-          <input type="number" name="month" min="1" max="12" required class="form-control" placeholder="e.g. 5" />
+          <label class="form-label" for="month"><i class="fa-solid fa-calendar-days"></i> Month (1–12)</label>
+          <input id="month" type="number" name="month" min="1" max="12" required class="form-control" placeholder="e.g. 5" />
         </div>
 
         <div class="form-group">
@@ -42,8 +48,13 @@
         </div>
 
         <div class="form-group" id="subject-input">
-          <label class="form-label"><i class="fa-solid fa-book"></i> Subject Name</label>
-          <input type="text" name="subject" class="form-control" placeholder="e.g. Math" />
+          <label class="form-label" for="subject"><i class="fa-solid fa-book"></i> Subject Name</label>
+          <select id="subject" name="subject" class="form-control">
+            <option value="">-- Select Subject --</option>
+            {% for subject in subjects %}
+            <option value="{{ subject }}">{{ subject }}</option>
+            {% endfor %}
+          </select>
         </div>
 
         <div class="btn-group">
@@ -65,7 +76,10 @@
 <script>
   function toggleSubjectField() {
     var choice = document.querySelector('input[name="choice"]:checked').value;
-    document.getElementById('subject-input').style.display = (choice === '1') ? 'block' : 'none';
+    var showSubject = (choice === '1');
+    document.getElementById('subject-input').style.display = showSubject ? 'block' : 'none';
+    document.getElementById('subject').required = showSubject;
   }
+  toggleSubjectField();
 </script>
 {% endblock %}

@@ -300,7 +300,7 @@ def view_analytics():
             flash("Error while processing: " + str(e), "error")
             return redirect('/view_analytics')
 
-    return render_template("view_analytics.html")
+    return render_template("view_analytics.html", batches=BATCHES, subjects=SUBJECTS)
 
 if __name__ == '__main__':
     app.run(debug=True)

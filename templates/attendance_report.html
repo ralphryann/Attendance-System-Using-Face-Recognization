@@ -8,8 +8,10 @@
     <img src="{{ url_for('static', filename='to-do-list.gif') }}" alt="Report" class="card-icon" style="display:inline;width:40px;height:40px;vertical-align:middle;margin:0 0.5rem 0 0;" />
     Attendance Report
   </h2>
+  <p class="card-subtitle">Review individual records and a quick attendance summary.</p>
 
   <!-- Attendance Table -->
+  {% if rows %}
   <div class="table-container">
     <table class="table">
       <thead>
@@ -30,6 +32,9 @@
       </tbody>
     </table>
   </div>
+  {% else %}
+  <p class="empty-state">No attendance rows found for this session.</p>
+  {% endif %}
 
   <!-- Summary Cards -->
   <div class="summary-grid">
