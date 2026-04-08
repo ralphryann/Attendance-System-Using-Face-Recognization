@@ -41,6 +41,14 @@ body {
   flex-direction: column;
 }
 
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(79, 70, 229, 0.35);
+  outline-offset: 2px;
+}
+
 /* ===== Navigation ===== */
 
 .navbar {
@@ -54,6 +62,8 @@ body {
   position: sticky;
   top: 0;
   z-index: 50;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .navbar-brand {
@@ -75,6 +85,8 @@ body {
   display: flex;
   gap: 0.5rem;
   list-style: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .navbar-links a {
@@ -99,8 +111,12 @@ body {
   flex: 1;
   padding: 2rem 1rem;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+}
+
+.page-shell {
+  width: min(1100px, 100%);
 }
 
 /* ===== Cards ===== */
@@ -137,6 +153,13 @@ body {
 .card-subtitle {
   text-align: center;
   color: var(--neutral-light);
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.card-copy {
+  text-align: center;
+  color: var(--neutral);
   margin-bottom: 1.5rem;
   font-size: 0.95rem;
 }
@@ -220,6 +243,16 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.btn-group-inline {
+  flex-direction: row;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-auto {
+  width: auto;
 }
 
 /* ===== Forms ===== */
@@ -361,6 +394,16 @@ body {
   font-weight: 700;
 }
 
+.empty-state {
+  padding: 1rem;
+  border-radius: var(--radius);
+  background: var(--surface-alt);
+  border: 1px dashed var(--border);
+  color: var(--neutral);
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
 /* ===== Flash Messages ===== */
 
 .flash-messages {
@@ -428,6 +471,7 @@ body {
 .two-col .col-illustration img {
   width: 200px;
   height: 200px;
+  max-width: 100%;
 }
 
 @media (min-width: 768px) {
@@ -438,6 +482,25 @@ body {
   .two-col .col-illustration,
   .two-col .col-form {
     flex: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .navbar {
+    padding: 0.75rem 1rem;
+  }
+
+  .navbar-brand {
+    font-size: 1.1rem;
+  }
+
+  .navbar-links {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .card {
+    padding: 1.25rem;
   }
 }
 

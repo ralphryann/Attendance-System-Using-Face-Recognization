@@ -11,8 +11,8 @@
 <body>
 
   <!-- Navigation -->
-  <nav class="navbar">
-    <a href="/" class="navbar-brand">
+  <nav class="navbar" aria-label="Primary">
+    <a href="/" class="navbar-brand" aria-label="AttendanceAI home">
       <i class="fas fa-user-check"></i>
       AttendanceAI
     </a>
@@ -26,9 +26,9 @@
   <!-- Flash Messages -->
   {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
-  <div class="flash-messages" style="padding-top:1rem;">
+  <div class="flash-messages">
     {% for category, message in messages %}
-    <div class="flash-msg {{ category }}">{{ message }}</div>
+    <div class="flash-msg {{ category }}" role="status" aria-live="polite">{{ message }}</div>
     {% endfor %}
   </div>
   {% endif %}
@@ -36,7 +36,9 @@
 
   <!-- Main Content -->
   <main class="main-content">
-    {% block content %}{% endblock %}
+    <div class="page-shell">
+      {% block content %}{% endblock %}
+    </div>
   </main>
 
   <!-- Footer -->
