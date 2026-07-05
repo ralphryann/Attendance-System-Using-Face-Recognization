@@ -3,106 +3,59 @@
 {% block title %}Attendance Report{% endblock %}
 
 {% block content %}
-  <div class="max-w-6xl mx-auto">
-    <div class="bg-white rounded-3xl shadow-2xl p-8">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-800">Attendance Report</h1>
-          <p class="text-gray-500 mt-1">{{ report_file }}</p>
-        </div>
-        <div class="flex flex-wrap gap-3">
-          <a href="{{ url_for('attendance_report') }}" class="inline-flex items-center justify-center bg-orange-500 hover:bg-orange-600 text-white px-5 py-3 rounded-xl shadow-lg transition">
-            <i class="fa-solid fa-filter mr-2"></i> Reset Filters
-          </a>
-          <a href="{{ url_for('home') }}" class="inline-flex items-center justify-center bg-blue-500 hover:bg-blue-600 text-white px-5 py-3 rounded-xl shadow-lg transition">
-            <i class="fa-solid fa-house mr-2"></i> Home
-          </a>
-        </div>
-      </div>
+<div class="card card-wide">
+  <h2 class="card-title">
+    <img src="{{ url_for('static', filename='to-do-list.gif') }}" alt="Report" class="card-icon" style="display:inline;width:40px;height:40px;vertical-align:middle;margin:0 0.5rem 0 0;" />
+    Attendance Report
+  </h2>
+  <p class="card-subtitle">Review individual records and a quick attendance summary.</p>
 
-      <form method="GET" action="{{ url_for('attendance_report') }}" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8 bg-orange-50 rounded-2xl p-5 border border-orange-100">
-        <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Batch</label>
-          <select name="batch_id" required class="w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
-            <option value="">-- Select Batch --</option>
-            {% for batch in batches %}
-            <option value="{{ batch.id }}" {% if selected_batch_id == batch.id|string %}selected{% endif %}>{{ batch.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
+  <!-- Attendance Table -->
+  {% if rows %}
+  <div class="table-container">
+    <table class="table">
+      <thead>
+        <tr>
+          {% for col in header %}
+          <th>{{ col }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          {% for item in row %}
+          <td>{{ item }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty-state">No attendance rows found for this session.</p>
+  {% endif %}
 
-        <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Subject</label>
-          <select name="subject_id" required class="w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
-            <option value="">-- Select Subject --</option>
-            {% for subject in subjects %}
-            <option value="{{ subject.id }}" {% if selected_subject_id == subject.id|string %}selected{% endif %}>{{ subject.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Exact Date</label>
-          <input type="date" name="report_date" value="{{ selected_report_date }}" class="w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
-        </div>
-
-        <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Month</label>
-          <select name="month" class="w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
-            <option value="">-- Select Month --</option>
-            {% for month_number, month_name in months %}
-            <option value="{{ month_number }}" {% if selected_month == month_number|string %}selected{% endif %}>{{ month_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="md:col-span-2 xl:col-span-4">
-          <p class="text-sm text-gray-500 mb-3">Use either an exact date or a month filter. If both are provided, the exact date takes priority.</p>
-          <button type="submit" class="w-full md:w-auto bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl shadow-md transition">
-            <i class="fa-solid fa-magnifying-glass mr-2"></i> View Attendance Report
-          </button>
-        </div>
-      </form>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div class="bg-orange-500 text-white rounded-2xl p-5 shadow-lg">
-          <p class="text-sm uppercase tracking-wide">Total Students</p>
-          <p class="text-3xl font-bold mt-2">{{ summary['Total'] }}</p>
-        </div>
-        <div class="bg-green-500 text-white rounded-2xl p-5 shadow-lg">
-          <p class="text-sm uppercase tracking-wide">Present</p>
-          <p class="text-3xl font-bold mt-2">{{ summary['Present'] }}</p>
-        </div>
-        <div class="bg-red-500 text-white rounded-2xl p-5 shadow-lg">
-          <p class="text-sm uppercase tracking-wide">Absent</p>
-          <p class="text-3xl font-bold mt-2">{{ summary['Absent'] }}</p>
-        </div>
-      </div>
-
-      <div class="overflow-x-auto">
-        <table class="w-full text-center border border-gray-300 rounded-xl overflow-hidden">
-          <thead class="bg-orange-500 text-white">
-            <tr>
-              <th class="py-3 px-4 border border-gray-200">Student Name</th>
-              <th class="py-3 px-4 border border-gray-200">Status</th>
-              <th class="py-3 px-4 border border-gray-200">Timestamp</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in rows %}
-            <tr class="{% if loop.index is even %}bg-orange-50{% else %}bg-white{% endif %}">
-              <td class="py-2 px-4 border border-gray-200">{{ row.student_name }}</td>
-              <td class="py-2 px-4 border border-gray-200 font-semibold {% if row.status == 'Present' %}text-green-600{% else %}text-red-600{% endif %}">{{ row.status }}</td>
-              <td class="py-2 px-4 border border-gray-200">{{ row.timestamp }}</td>
-            </tr>
-            {% else %}
-            <tr class="bg-white">
-              <td colspan="3" class="py-6 px-4 text-gray-500">No attendance rows to display yet. Choose a batch, subject, and date or month.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+  <!-- Summary Cards -->
+  <div class="summary-grid">
+    <div class="summary-card total">
+      <div class="summary-label">🧮 Total Students</div>
+      <div class="summary-value">{{ summary['Total'] }}</div>
+    </div>
+    <div class="summary-card present">
+      <div class="summary-label">✅ Present</div>
+      <div class="summary-value">{{ summary['Present'] }}</div>
+    </div>
+    <div class="summary-card absent">
+      <div class="summary-label">🚫 Absent</div>
+      <div class="summary-value">{{ summary['Absent'] }}</div>
     </div>
   </div>
+
+  <div style="text-align:center;margin-top:1.5rem;">
+    <a href="/" class="btn btn-primary" style="width:auto;display:inline-flex;">
+      <i class="fas fa-arrow-left"></i> Back to Home
+    </a>
+  </div>
+</div>
 {% endblock %}

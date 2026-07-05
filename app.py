@@ -1,25 +1,32 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, abort
 from datetime import datetime
-from flask import send_file
-from flask import render_template_string
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for headless server environments
 import matplotlib.pyplot as plt
-from io import BytesIO
-import base64
-import  os
-import  csv
+import os
+import csv
+import re
 
 
 app = Flask(__name__)
-app.secret_key = "supersecretkey"
+app.secret_key = os.environ.get("SECRET_KEY", "supersecretkey")
 
 # Directory to store attendance CSVs
-DATA_FOLDER = 'attendance_data'
-if not os.path.exists(DATA_FOLDER):
-    os.makedirs(DATA_FOLDER)
+ATTENDANCE_ROOT = os.path.join('static', 'attendance')
+os.makedirs(ATTENDANCE_ROOT, exist_ok=True)
 
-# Dummy batches and subjects
+# Batches and subjects
 BATCHES = ['BatchA', 'BatchB']
 SUBJECTS = ['Math', 'Science', 'English']
+
+MONTHS = {
+    1: "January", 2: "February", 3: "March", 4: "April",
+    5: "May", 6: "June", 7: "July", 8: "August",
+    9: "September", 10: "October", 11: "November", 12: "December"
+}
+
+# Simple pattern for safe file-path components (alphanumeric, dash, underscore)
+SAFE_NAME_RE = re.compile(r'^[A-Za-z0-9_-]+$')
 
 @app.route('/')
 def home():
@@ -44,14 +51,8 @@ def submit_attendance():
         # Colour.change_color("bo,u")
         heading = True
 
-        months = {
-            1: "January", 2: "February", 3: "March", 4: "April",
-            5: "May", 6: "June", 7: "July", 8: "August",
-            9: "September", 10: "October", 11: "November", 12: "December"
-        }
-
         current_month_number = datetime.today().month
-        batch_path = f"static/attendance/{batch}/{months[current_month_number]}"
+        batch_path = os.path.join(ATTENDANCE_ROOT, batch, MONTHS[current_month_number])
         os.makedirs(batch_path, exist_ok=True)
         file_name = f"{batch_path}/{subject}_{datetime.today().date()}.csv"
 
@@ -159,17 +160,22 @@ def submit_attendance():
 
     except Exception as e:
         print("⚠️ ERROR:", e)
-        print(f"Error during attendance: {e}")
-        return "Something went wrong. Check the logs."
+        flash(f"Error during attendance: {e}", "error")
+        return redirect(url_for('home'))
     
 
 @app.route("/view_attendance")
 def view_attendance():
-    file_path = request.args.get("file")
-    if not os.path.exists(file_path):
-        return "❌ File not found", 404
+    file_path = request.args.get("file", "")
+
+    # Prevent path traversal: resolve and verify the path stays inside the project
+    abs_file = os.path.abspath(file_path)
+    abs_root = os.path.abspath(ATTENDANCE_ROOT)
+    if not abs_file.startswith(abs_root) or not os.path.isfile(abs_file):
+        abort(404)
+
     rows = []
-    with open(file_path, newline='') as csvfile:
+    with open(abs_file, newline='') as csvfile:
         reader = csv.reader(csvfile)
         rows = list(reader)
 
@@ -189,9 +195,9 @@ def view_attendance():
     body_rows = filtered_rows[1:-3] if len(filtered_rows) > 1 else []  # rest are the data rows
 
     # Calculate the summary
-    total_students = len(body_rows) 
-    present_count = sum(1 for row in body_rows if 'Present' in row)  # Update based on actual attendance data
-    absent_count = sum(1 for row in body_rows if 'Absent' in row)  
+    total_students = len(body_rows)
+    present_count = sum(1 for row in body_rows if 'Present' in row)
+    absent_count = sum(1 for row in body_rows if 'Absent' in row)
 
     summary = {
         'Total': total_students,
@@ -199,81 +205,37 @@ def view_attendance():
         'Absent': absent_count
     }
 
-    html = """
-        <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Attendance Report</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.0/css/all.min.css">
-</head>
-<body class="bg-gradient-to-r from-green-100 to-lime-100 min-h-screen flex flex-col items-center p-6">
-  <h2 class="text-3xl font-bold text-orange-600 mb-6"><img src="static/to-do-list.gif" alt="Face Recognition Icon"
-        class="w-24 mx-auto" /> Attendance Report</h2>
-
-  <div class="overflow-x-auto w-full max-w-5xl">
-    <table class="w-full text-center border border-gray-300 rounded-xl shadow-lg bg-white">
-      <thead class="bg-orange-500 text-white">
-        <tr>
-          {% for col in header %}
-          <th class="py-3 px-4 border border-gray-200">{{ col }}</th>
-          {% endfor %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in rows %}
-        <tr class="{% if loop.index is even %}bg-orange-50{% else %}bg-white{% endif %}">
-          {% for item in row %}
-          <td class="py-2 px-4 border border-gray-200">{{ item }}</td>
-          {% endfor %}
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="flex flex-wrap justify-center gap-6 mt-10">
-    <div class="bg-orange-500 text-white px-6 py-4 rounded-2xl shadow-xl text-lg font-semibold text-center w-52">
-      🧮 Total Students<br><span class="text-2xl font-bold">{{ summary['Total'] }}</span>
-    </div>
-    <div class="bg-green-500 text-white px-6 py-4 rounded-2xl shadow-xl text-lg font-semibold text-center w-52">
-      ✅ Present<br><span class="text-2xl font-bold">{{ summary['Present'] }}</span>
-    </div>
-    <div class="bg-red-500 text-white px-6 py-4 rounded-2xl shadow-xl text-lg font-semibold text-center w-52">
-      🚫 Absent<br><span class="text-2xl font-bold">{{ summary['Absent'] }}</span>
-    </div>
-  </div>
-
-  <div class="mt-12">
-    <a href="/" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-xl shadow-lg text-lg transition">
-      ⬅️ Back to Home
-    </a>
-  </div>
-</body>
-</html>
-
-        """
-
-    return render_template_string(html, header=header, rows=body_rows, summary=summary)
+    return render_template('attendance_report.html', header=header, rows=body_rows, summary=summary)
 
 @app.route('/view_analytics', methods=['GET', 'POST'])
 def view_analytics():
     if request.method == 'POST':
-        batch = request.form['batch']
-        month_number = int(request.form['month'])
-        choice = request.form['choice']
-        subject = request.form.get('subject', '')
+        batch = request.form.get('batch', '').strip()
+        choice = request.form.get('choice', '')
+        subject = request.form.get('subject', '').strip()
 
-        months = {
-            1: "January", 2: "February", 3: "March", 4: "April",
-            5: "May", 6: "June", 7: "July", 8: "August",
-            9: "September", 10: "October", 11: "November", 12: "December"
-        }
+        # Validate month
+        try:
+            month_number = int(request.form['month'])
+            if month_number < 1 or month_number > 12:
+                raise ValueError
+        except (ValueError, KeyError):
+            flash("Please enter a valid month number (1–12).", "error")
+            return redirect('/view_analytics')
 
-        batch_path = f"static/attendance/{batch}/{months[month_number]}"
+        # Validate batch name
+        if not batch or not SAFE_NAME_RE.match(batch):
+            flash("Please enter a valid batch name (letters, numbers, dashes, underscores).", "error")
+            return redirect('/view_analytics')
+
+        # Validate subject when single-subject mode
+        if choice == '1' and (not subject or not SAFE_NAME_RE.match(subject)):
+            flash("Please enter a valid subject name.", "error")
+            return redirect('/view_analytics')
+
+        batch_path = os.path.join(ATTENDANCE_ROOT, batch, MONTHS[month_number])
         if not os.path.exists(batch_path):
-            flash("❌ Batch folder for the given month does not exist.", "error")
+            flash("Batch folder for the given month does not exist.", "error")
             return redirect('/view_analytics')
 
         try:
@@ -290,7 +252,7 @@ def view_analytics():
                                 total_absent += int(last_line[2])
 
                 if total_students == 0:
-                    flash("❌ No attendance records found for the given month/subject.", "error")
+                    flash("No attendance records found for the given month/subject.", "error")
                     return redirect('/view_analytics')
 
                 labels = ["Present", "Absent"]
@@ -299,7 +261,7 @@ def view_analytics():
 
                 fig = plt.figure(figsize=(6, 6))
                 plt.pie(sizes, labels=labels, autopct="%1.1f%%", colors=colors, startangle=140)
-                plt.title(f"Attendance for {subject} ({months[month_number]})")
+                plt.title(f"Attendance for {subject} ({MONTHS[month_number]})")
                 img_path = f"static/analytics_{batch}_{subject}.png"
                 fig.savefig(img_path)
                 plt.close()
@@ -318,12 +280,12 @@ def view_analytics():
                             subject_attendance[subject] = subject_attendance.get(subject, 0) + present
 
                 if not subject_attendance:
-                    flash("❌ No attendance records found.", "error")
+                    flash("No attendance records found.", "error")
                     return redirect('/view_analytics')
 
                 fig = plt.figure(figsize=(8, 8))
                 plt.pie(subject_attendance.values(), labels=subject_attendance.keys(), autopct="%1.1f%%", startangle=140)
-                plt.title(f"Attendance for All Subjects ({months[month_number]})")
+                plt.title(f"Attendance for All Subjects ({MONTHS[month_number]})")
                 img_path = f"static/analytics_{batch}_all.png"
                 fig.savefig(img_path)
                 plt.close()
@@ -331,14 +293,14 @@ def view_analytics():
                 return render_template("analytics_result.html", image=img_path)
 
             else:
-                flash("❌ Invalid choice", "error")
+                flash("Invalid choice.", "error")
                 return redirect('/view_analytics')
 
         except Exception as e:
-            flash("❌ Error while processing: " + str(e), "error")
+            flash("Error while processing: " + str(e), "error")
             return redirect('/view_analytics')
 
-    return render_template("view_analytics.html")
+    return render_template("view_analytics.html", batches=BATCHES, subjects=SUBJECTS)
 
 if __name__ == '__main__':
     app.run(debug=True)
