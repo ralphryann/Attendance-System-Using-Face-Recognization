@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if student else 'Add' }} Student{% endblock %}
+
+{% block content %}
+<div class="card" style="margin: 0 auto;">
+  <h1 class="card-title">{{ 'Edit' if student else 'Add' }} Student</h1>
+
+  <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div class="form-group">
+      <label class="form-label" for="name">Name</label>
+      <input type="text" id="name" name="name" required class="form-control"
+             value="{{ student.name if student else '' }}">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="batch">Batch</label>
+      <select id="batch" name="batch" required class="form-control">
+        <option value="">-- Select Batch --</option>
+        {% for b in batches %}
+        <option value="{{ b }}" {% if student and student.batch.name == b %}selected{% endif %}>{{ b }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="photo">
+        Photo{% if student %} (leave blank to keep the current face data){% endif %}
+      </label>
+      <input type="file" id="photo" name="photo" accept="image/*" class="form-control"
+             {% if not student %}required{% endif %}>
+    </div>
+
+    <div class="btn-group btn-group-inline">
+      <button type="submit" class="btn btn-primary btn-auto">
+        <i class="fa-solid fa-floppy-disk"></i> Save
+      </button>
+      <a href="{{ url_for('list_students') }}" class="btn btn-outline btn-auto">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

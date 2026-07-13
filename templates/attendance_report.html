@@ -52,8 +52,16 @@
     </div>
   </div>
 
-  <div style="text-align:center;margin-top:1.5rem;">
-    <a href="/" class="btn btn-primary" style="width:auto;display:inline-flex;">
+  <div class="btn-group btn-group-inline" style="margin-top:1.5rem;">
+    {% if file %}
+    <a href="{{ url_for('download_attendance_report', file=file, format='csv') }}" class="btn btn-outline btn-auto">
+      <i class="fas fa-file-csv"></i> Download CSV
+    </a>
+    <a href="{{ url_for('download_attendance_report', file=file, format='xlsx') }}" class="btn btn-outline btn-auto">
+      <i class="fas fa-file-excel"></i> Download Excel
+    </a>
+    {% endif %}
+    <a href="/" class="btn btn-primary btn-auto">
       <i class="fas fa-arrow-left"></i> Back to Home
     </a>
   </div>

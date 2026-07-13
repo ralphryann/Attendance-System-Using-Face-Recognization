@@ -3,69 +3,66 @@
 {% block title %}Attendance Session{% endblock %}
 
 {% block content %}
-  <div class="max-w-6xl mx-auto">
-    <div class="bg-white rounded-3xl shadow-2xl overflow-hidden">
-      <div class="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr]">
-        <div class="bg-gray-950 p-4 md:p-6">
-          <div class="aspect-video rounded-2xl overflow-hidden border border-white/10 bg-black flex items-center justify-center">
-            <video id="camera-feed" autoplay playsinline muted class="w-full h-full object-cover"></video>
-          </div>
-          <canvas id="capture-canvas" class="hidden"></canvas>
+<div class="card card-wide" style="max-width: 1100px;">
+  <div class="session-grid">
+    <div class="session-video-panel">
+      <video id="camera-feed" autoplay playsinline muted></video>
+      <canvas id="capture-canvas" style="display:none;"></canvas>
+    </div>
+
+    <div class="session-info">
+      <div>
+        <p class="session-eyebrow">Live Session</p>
+        <h1 class="card-title" style="text-align:left; margin-bottom:0.25rem;">Attendance Session</h1>
+        <p class="card-subtitle" style="text-align:left; margin-bottom:0;">{{ batch_name }} / {{ subject_name }}</p>
+      </div>
+
+      <div class="info-tile-grid">
+        <div class="info-tile">
+          <div class="info-label">Batch</div>
+          <div class="info-value">{{ batch_name }}</div>
         </div>
-
-        <div class="p-6 md:p-8 flex flex-col gap-6">
-          <div>
-            <p class="text-sm uppercase tracking-[0.25em] text-orange-500 font-semibold">Live Session</p>
-            <h1 class="text-3xl font-bold text-gray-800 mt-2">Attendance Session</h1>
-            <p class="text-gray-500 mt-2">{{ batch_name }} / {{ subject_name }}</p>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div class="bg-orange-50 border border-orange-100 rounded-2xl p-4">
-              <p class="text-sm text-gray-500">Batch</p>
-              <p class="text-xl font-semibold text-gray-800 mt-1">{{ batch_name }}</p>
-            </div>
-            <div class="bg-green-50 border border-green-100 rounded-2xl p-4">
-              <p class="text-sm text-gray-500">Subject</p>
-              <p class="text-xl font-semibold text-gray-800 mt-1">{{ subject_name }}</p>
-            </div>
-          </div>
-
-          <div class="bg-blue-50 border border-blue-100 rounded-2xl p-5">
-            <p class="text-sm uppercase tracking-wide text-blue-600 font-semibold">Status</p>
-            <p id="status-message" class="text-lg font-semibold text-gray-800 mt-2">Requesting camera access...</p>
-            <p id="recognized-student" class="text-sm text-gray-500 mt-2">No student recognized yet.</p>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div class="bg-gray-50 border border-gray-200 rounded-2xl p-4">
-              <p class="text-sm text-gray-500">Total Students</p>
-              <p class="text-2xl font-bold text-gray-800 mt-1">{{ total_students }}</p>
-            </div>
-            <div class="bg-gray-50 border border-gray-200 rounded-2xl p-4">
-              <p class="text-sm text-gray-500">Remaining</p>
-              <p id="remaining-students" class="text-2xl font-bold text-gray-800 mt-1">{{ total_students }}</p>
-            </div>
-          </div>
-
-          <div class="space-y-3">
-            <button id="finish-button" type="button" class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl shadow-md transition duration-300">
-              <i class="fa-solid fa-floppy-disk mr-2"></i> Finish and Save Attendance
-            </button>
-            <a href="{{ url_for('take_attendance') }}" class="block w-full text-center bg-gray-700 hover:bg-gray-800 text-white font-semibold py-3 rounded-xl shadow-md transition duration-300">
-              <i class="fa-solid fa-arrow-left mr-2"></i> Back
-            </a>
-          </div>
+        <div class="info-tile">
+          <div class="info-label">Subject</div>
+          <div class="info-value">{{ subject_name }}</div>
         </div>
+      </div>
+
+      <div class="status-panel">
+        <div class="status-label">Status</div>
+        <p id="status-message" class="status-message">Requesting camera access...</p>
+        <p id="recognized-student" class="status-sub">No student recognized yet.</p>
+      </div>
+
+      <div class="info-tile-grid">
+        <div class="info-tile">
+          <div class="info-label">Total Students</div>
+          <div class="info-value">{{ total_students }}</div>
+        </div>
+        <div class="info-tile">
+          <div class="info-label">Remaining</div>
+          <div class="info-value" id="remaining-students">{{ total_students }}</div>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button id="finish-button" type="button" class="btn btn-success">
+          <i class="fa-solid fa-floppy-disk"></i> Finish and Save Attendance
+        </button>
+        <a href="{{ url_for('take_attendance') }}" class="btn btn-outline">
+          <i class="fa-solid fa-arrow-left"></i> Back
+        </a>
       </div>
     </div>
   </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
   <script>
     const attendanceToken = "{{ attendance_token }}";
     const frameIntervalMs = {{ frame_interval_ms }};
+    const geofenceEnabled = {{ 'true' if geofence_enabled else 'false' }};
     const videoElement = document.getElementById("camera-feed");
     const canvasElement = document.getElementById("capture-canvas");
     const statusMessageElement = document.getElementById("status-message");
@@ -97,6 +94,44 @@
       } catch (error) {
         setStatus("Camera access was denied or is unavailable.");
       }
+    }
+
+    function verifyLocation() {
+      if (!("geolocation" in navigator)) {
+        setStatus("This browser can't provide location, and location verification is required here.");
+        return;
+      }
+
+      setStatus("Checking your location...");
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const response = await fetch("/api/verify_location", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                attendance_token: attendanceToken,
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+              }),
+            });
+            const payload = await response.json();
+            if (!response.ok || payload.status !== "success") {
+              setStatus(payload.message || "Location check failed.");
+              return;
+            }
+            startCamera();
+          } catch (error) {
+            setStatus("Location check failed. Please try again.");
+          }
+        },
+        () => {
+          setStatus(
+            "Location access was denied or unavailable. If this page isn't loaded over " +
+            "HTTPS (or localhost), browsers block location access entirely -- check with your admin."
+          );
+        }
+      );
     }
 
     function stopCamera() {
@@ -165,7 +200,6 @@
 
       isFinishing = true;
       finishButton.disabled = true;
-      finishButton.classList.add("opacity-70", "cursor-not-allowed");
       setStatus("Saving attendance records...");
 
       try {
@@ -189,13 +223,17 @@
       } catch (error) {
         setStatus(error.message || "Failed to save attendance.");
         finishButton.disabled = false;
-        finishButton.classList.remove("opacity-70", "cursor-not-allowed");
         isFinishing = false;
       }
     }
 
     finishButton.addEventListener("click", finalizeAttendance);
     window.addEventListener("beforeunload", stopCamera);
-    startCamera();
+
+    if (geofenceEnabled) {
+      verifyLocation();
+    } else {
+      startCamera();
+    }
   </script>
 {% endblock %}

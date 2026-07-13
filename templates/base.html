@@ -4,56 +4,59 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}Face Recognition Attendance System{% endblock %}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.0/css/all.min.css">
   {% block head %}{% endblock %}
 </head>
-<body class="bg-gradient-to-r from-green-100 to-lime-100 min-h-screen text-gray-800 {% block body_class %}{% endblock %}">
-  <header class="border-b border-white/40 bg-white/70 backdrop-blur-md sticky top-0 z-20">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <div>
-        <a href="{{ url_for('home') }}" class="text-xl font-bold tracking-tight text-gray-900">Face Recognition Attendance</a>
-        <p class="text-sm text-gray-500">Secure attendance capture, reporting, and analytics</p>
-      </div>
+<body class="{% block body_class %}{% endblock %}">
+  <header class="navbar">
+    <a href="{{ url_for('home') }}" class="navbar-brand">
+      AttendanceAI
+      <span class="navbar-tagline">Face recognition attendance &amp; analytics</span>
+    </a>
 
-      <nav class="flex flex-wrap items-center gap-3 text-sm">
-        <a href="{{ url_for('home') }}" class="px-3 py-2 rounded-xl hover:bg-white text-gray-700 transition">Home</a>
+    <nav class="navbar-links">
+      <a href="{{ url_for('home') }}">Home</a>
 
-        {% if current_user.is_authenticated %}
-        <a href="{{ url_for('take_attendance') }}" class="px-3 py-2 rounded-xl hover:bg-white text-gray-700 transition">Attendance</a>
-        <a href="{{ url_for('attendance_report') }}" class="px-3 py-2 rounded-xl hover:bg-white text-gray-700 transition">Reports</a>
-        {% if current_user.role == 'Admin' %}
-        <a href="{{ url_for('view_analytics') }}" class="px-3 py-2 rounded-xl hover:bg-white text-gray-700 transition">Analytics</a>
-        {% endif %}
-        <a href="{{ url_for('change_password') }}" class="px-3 py-2 rounded-xl hover:bg-white text-gray-700 transition">Change Password</a>
+      {% if current_user.is_authenticated %}
+      <a href="{{ url_for('take_attendance') }}">Attendance</a>
+      <a href="{{ url_for('attendance_report') }}">Reports</a>
+      {% if current_user.role == 'Admin' %}
+      <a href="{{ url_for('view_analytics') }}">Analytics</a>
+      <a href="{{ url_for('list_students') }}">Students</a>
+      {% endif %}
+      <a href="{{ url_for('change_password') }}">Change Password</a>
 
-        <div class="flex items-center gap-2 bg-white rounded-xl px-3 py-2 shadow-sm">
-          <span class="font-semibold text-gray-800">{{ current_user.username }}</span>
-          <span class="text-xs uppercase tracking-wide text-orange-600">{{ current_user.role }}</span>
-        </div>
-        <a href="{{ url_for('logout') }}" class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-900 text-white transition">Logout</a>
-        {% else %}
-        <a href="{{ url_for('login') }}" class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-900 text-white transition">Login</a>
-        {% endif %}
-      </nav>
-    </div>
+      <span class="navbar-user">
+        <strong>{{ current_user.username }}</strong>
+        <span class="role-badge">{{ current_user.role }}</span>
+      </span>
+      <a href="{{ url_for('logout') }}" class="navbar-cta">Logout</a>
+      {% else %}
+      <a href="{{ url_for('login') }}" class="navbar-cta">Login</a>
+      {% endif %}
+    </nav>
   </header>
 
-  <main class="max-w-6xl mx-auto px-4 py-6">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <div class="space-y-3 mb-6">
-      {% for category, message in messages %}
-      <div class="rounded-2xl px-4 py-3 text-sm font-medium shadow-sm {% if category == 'error' %}bg-red-100 text-red-700 border border-red-200{% else %}bg-green-100 text-green-700 border border-green-200{% endif %}">
-        {{ message }}
+  <main class="main-content">
+    <div class="page-shell">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="flash-messages">
+        {% for category, message in messages %}
+        <div class="flash-msg {{ category }}">{{ message }}</div>
+        {% endfor %}
       </div>
-      {% endfor %}
-    </div>
-    {% endif %}
-    {% endwith %}
+      {% endif %}
+      {% endwith %}
 
-    {% block content %}{% endblock %}
+      {% block content %}{% endblock %}
+    </div>
   </main>
+
+  <footer class="footer">
+    &copy; {{ current_year|default(2026) }} AttendanceAI — Secure attendance capture, reporting, and analytics.
+  </footer>
 
   {% block scripts %}{% endblock %}
 </body>

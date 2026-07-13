@@ -23,7 +23,7 @@ A Flask-based attendance system that uses OpenCV + `face_recognition` to identif
 ```text
 Attendance-System-Using-Face-Recognization/
 ├── app.py
-├── GenratePickel.py
+├── register_students.py
 ├── requirements.txt
 ├── README.md
 ├── static/
@@ -55,11 +55,13 @@ pip install -r requirements.txt
 ```
 
 3. Add student images to a `Photos/` folder in the project root.
-4. Generate face encodings:
+4. Register students (extracts and stores an encrypted face encoding per student in the database):
 
 ```bash
-python GenratePickel.py
+python register_students.py --photos-dir Photos --batch <name>
 ```
+
+   (Students can also be added, edited, or removed later from the web UI under **Students**, admin-only.)
 
 5. Run the app:
 
@@ -97,6 +99,6 @@ static/attendance/<Batch>/<Month>/<Subject>_<YYYY-MM-DD>.csv
 - **`ModuleNotFoundError: face_recognition` / `dlib` build errors**  
   Use Python 3.10/3.11 and reinstall dependencies in a fresh virtual environment.
 - **No face recognized**  
-  Ensure clear student images in `Photos/`, then regenerate encodings with `GenratePickel.py`.
+  Ensure clear student images in `Photos/`, then re-run `register_students.py` (or re-upload the photo via the Students admin page).
 - **No analytics data**  
   First generate attendance files for the selected batch/month.

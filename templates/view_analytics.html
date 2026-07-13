@@ -18,6 +18,7 @@
       <p class="card-subtitle">Generate charts by batch, month, and subject scope.</p>
 
       <form method="POST" action="/view_analytics">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <div class="form-group">
           <label class="form-label" for="batch"><i class="fa-solid fa-folder"></i> Batch Name</label>
           <select id="batch" name="batch" required class="form-control">
@@ -59,9 +60,22 @@
 
         <div class="btn-group">
           <button type="submit" class="btn btn-primary">
-            <i class="fa-solid fa-magnifying-glass"></i> View Report
+            <i class="fa-solid fa-magnifying-glass"></i> View Chart
           </button>
-          <a href="/" class="btn btn-outline">
+        </div>
+
+        <div class="btn-group btn-group-inline mt-1">
+          <button type="submit" name="format" value="csv"
+                  formaction="{{ url_for('export_attendance') }}" formmethod="get"
+                  class="btn btn-secondary btn-auto">
+            <i class="fa-solid fa-file-csv"></i> Export CSV
+          </button>
+          <button type="submit" name="format" value="xlsx"
+                  formaction="{{ url_for('export_attendance') }}" formmethod="get"
+                  class="btn btn-secondary btn-auto">
+            <i class="fa-solid fa-file-excel"></i> Export Excel
+          </button>
+          <a href="/" class="btn btn-outline btn-auto">
             <i class="fa-solid fa-house"></i> Home
           </a>
         </div>
